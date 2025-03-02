@@ -1,0 +1,47 @@
+---
+title: "CNI_LargeTrees"
+author: "M. Friedman"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse) # tidyverse 
+library(leaflet) # leaflet maps
+library(leaflet.extras) # extra tools for leaflet
+library(sf)
+```
+
+```{r mapping}
+setwd("~/Documents/Github/CNI_Trees/CNI_LargeTrees_Map/")
+
+# load neighborhood polygon; transform; select CNI
+madison_neighborhoods <- read_sf(dsn = "~/Documents/Github/CNI_Trees/CNI_LargeTrees_Map/Neighborhood_Associations/", 
+                                 layer = "Neighborhood_Associations") %>%
+  st_transform(., "EPSG:4326") %>%
+  filter(OBJECTID == 10540)
+
+# trees point data
+madison_trees <- read.csv("~/Documents/Github/CNI_Trees/CNI_LargeTrees_Map/MadisonWI_UrbanForestry_StreetTrees_20241204.csv",
+                          fileEncoding = "UTF-8-BOM") %>%
+  st_as_sf(., coords = c("X", "Y"), crs = "EPSG:8193") %>%
+  st_transform(crs = "EPSG:4326")
+
+selected_trees_30 <- madison_trees %>%
+  filter(DIAMETER >= 30) %>%  # Filter based on diameter
+  st_as_sf() %>%
+  filter(st_within(., madison_neighborhoods, sparse = FALSE))  # Spatial filter
+
+
+# filter trees within neighborhood polygon and plot
+leaflet() %>%
+  addTiles() %>%
+  addPolygons(data = madison_neighborhoods, fillColor = "cyan", color = "black", weight = 2, fillOpacity = 0.2) %>%
+  addCircleMarkers(data = selected_trees_30, color = "hotpink", radius = 4, opacity = 1, fillOpacity = 0.8, 
+                   popup = ~paste("Tree ID: ", UNIQUEID, "<br>",
+                                  "Common Name: ", SPP_COM, "<br>",
+                                  "Scientific Name: ", SPP_BOT, "<br>", 
+                                  "Diameter: ", DIAMETER, " cm"))
+
+```
